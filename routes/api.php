@@ -17,6 +17,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/otp/send', [OtpController::class, 'send']);
     Route::post('/otp/verify', [OtpController::class, 'verify']);
     Route::post('/checkout', [CheckoutController::class, 'process']);
+    Route::get('/checkout/detail/{order_id}', [CheckoutController::class, 'show']);
     Route::post('/webhook/midtrans', [WebhookController::class, 'handle']);
 
     // Flow Admin

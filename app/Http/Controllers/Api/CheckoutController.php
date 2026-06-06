@@ -133,4 +133,16 @@ class CheckoutController extends Controller
             return response()->json(['message' => $e->getMessage()], $code);
         }
     }
+
+    public function show($order_id)
+    {
+        // Gunakan eager loading dengan matchSchedule untuk mencegah masalah N+1
+        $transaction = Transaction::with('matchSchedule')->find($order_id);
+
+        if (!$transaction) {
+            return response()->json(['message' => 'Transaksi tidak ditemukan'], 404);
+        }
+
+        return response()->json($transaction);
+    }
 }
