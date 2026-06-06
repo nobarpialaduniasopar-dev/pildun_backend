@@ -30,8 +30,13 @@ class StandingController extends Controller {
         // Ganti {COMPETITION_ID} dan tambahkan API Key nanti di .env
         // $response = Http::withHeaders(['X-Auth-Token' => env('FOOTBALL_API_KEY')])->get('https://api.football-data.org/v4/competitions/WC/standings');
         
-        // Simulasi update data
+        // Simulasi injeksi data dari API jika tabel kosong
+        if (\App\Models\Standing::count() === 0) {
+            $seeder = new \Database\Seeders\StandingSeeder();
+            $seeder->run();
+        }
+
         AppSetting::updateOrCreate(['key' => 'last_standings_update'], ['value' => now()->toDateTimeString()]);
-        return response()->json(['message' => 'Sync API Eksternal Berhasil. Limit aman.']);
+        return response()->json(['message' => 'Sync API Eksternal Berhasil. Data klasemen terisi.']);
     }
 }

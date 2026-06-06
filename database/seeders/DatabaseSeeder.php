@@ -48,5 +48,9 @@ class DatabaseSeeder extends Seeder
             'quota' => 300,
             'is_hot_match' => false,
         ]);
+
+        $this->call([
+            StandingSeeder::class,
+        ]);
     }
 }
