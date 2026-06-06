@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Midtrans\Config;
 use Midtrans\CoreApi;
+use App\Jobs\ReleaseExpiredTicket;
 
 class CheckoutController extends Controller
 {
@@ -114,6 +115,9 @@ class CheckoutController extends Controller
             $transaction->update([
                 'payment_url_or_va' => $paymentUrlOrVa
             ]);
+
+            // Pemicu Worker: Batalkan transaksi otomatis 15 menit dari sekarang jika PENDING
+            ReleaseExpiredTicket::dispatch($transaction->id)->delay(now()->addMinutes(15));
 
             return response()->json([
                 'message' => 'Checkout Success',

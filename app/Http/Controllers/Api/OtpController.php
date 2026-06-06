@@ -27,7 +27,7 @@ class OtpController extends Controller
         // Integrasi Resend (Ganti dengan client native jika facade tidak terdaftar)
         $resend = \Resend::client(env('RESEND_API_KEY'));
         $resend->emails->send([
-            'from' => 'TicketGo <no-reply@domain-anda.com>', // Sesuaikan domain Resend Anda
+            'from' => 'onboarding@resend.dev', // Default testing Resend
             'to' => [$request->email],
             'subject' => 'Kode OTP Pembelian Tiket Nobar',
             'html' => "<strong>Kode OTP Anda: {$code}</strong>. Berlaku selama 5 menit.",
