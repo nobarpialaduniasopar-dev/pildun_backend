@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\WebhookController;
 
 Route::prefix('v1')->group(function () {
     // Flow Publik (Tanpa Login)
+    Route::get('/matches', [App\Http\Controllers\Api\MatchController::class, 'index']);
     Route::post('/otp/send', [OtpController::class, 'send']);
     Route::post('/otp/verify', [OtpController::class, 'verify']);
     Route::post('/checkout', [CheckoutController::class, 'process']);
