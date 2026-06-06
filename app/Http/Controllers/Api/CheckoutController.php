@@ -34,7 +34,7 @@ class CheckoutController extends Controller
             'buyer_age' => 'required|integer',
             'qty' => 'required|integer|min:1|max:5',
             'payment_type' => 'required|in:bank_transfer,gopay,qris',
-            'bank' => 'required_if:payment_type,bank_transfer|in:bca,bni,bri,mandiri', // BCA opsional
+            'bank' => 'required_if:payment_type,bank_transfer|nullable|in:bca,bni,bri,mandiri',
         ]);
 
         try {
