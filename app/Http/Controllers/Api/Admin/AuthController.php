@@ -19,6 +19,7 @@ class AuthController extends Controller
             return response()->json(['message' => 'Kredensial tidak valid'], 401);
         }
 
+        /** @var \App\Models\User $user */
         $user = Auth::user();
         $token = $user->createToken('admin-token')->plainTextToken;
 
