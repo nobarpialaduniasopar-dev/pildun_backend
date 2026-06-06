@@ -24,8 +24,8 @@ return new class extends Migration {
         Schema::create('brackets', function (Blueprint $table) {
             $table->id();
             $table->string('round'); // e.g., 16, Quarter, Semi, Final
-            $table->foreignId('match_id')->nullable()->constrained('match_schedules')->nullOnDelete();
-            $table->foreignId('next_match_id')->nullable()->constrained('match_schedules')->nullOnDelete();
+            $table->foreignId('match_id')->nullable()->constrained('matches')->nullOnDelete();
+            $table->foreignId('next_match_id')->nullable()->constrained('matches')->nullOnDelete();
             $table->timestamps();
         });
     }
