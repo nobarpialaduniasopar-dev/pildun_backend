@@ -10,8 +10,14 @@ return new class extends Migration
     {
         Schema::create('tickets', function (Blueprint $table) {
             $table->uuid('id')->primary(); // Payload QR Code
-            $table->foreignUuid('transaction_id')->constrained('transactions')->onDelete('cascade')->index();
-            $table->foreignId('match_id')->constrained('matches')->onDelete('cascade')->index();
+            // Deklarasi kolom & index secara eksplisit
+            $table->uuid('transaction_id')->index();
+            $table->unsignedBigInteger('match_id')->index();
+            
+            // Deklarasi relasi foreign key secara eksplisit
+            $table->foreign('transaction_id')->references('id')->on('transactions')->onDelete('cascade');
+            $table->foreign('match_id')->references('id')->on('matches')->onDelete('cascade');
+            
             $table->enum('status', ['RESERVED', 'VALID', 'CHECKED_IN', 'CANCELED'])->default('RESERVED')->index();
             $table->timestamp('scanned_at')->nullable();
             $table->timestamps();
