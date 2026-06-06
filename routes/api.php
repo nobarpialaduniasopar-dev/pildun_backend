@@ -10,10 +10,12 @@ use App\Http\Controllers\Api\Admin\AuthController;
 use App\Http\Controllers\Api\Admin\MatchController as AdminMatchController;
 use App\Http\Controllers\Api\Admin\TransactionController;
 use App\Http\Controllers\Api\Admin\ScannerController;
+use App\Http\Controllers\Api\Admin\StandingController;
 
 Route::prefix('v1')->group(function () {
     // Flow Publik
     Route::get('/matches', [PublicMatchController::class, 'index']);
+    Route::get('/standings', [StandingController::class, 'index']);
     Route::post('/otp/send', [OtpController::class, 'send']);
     Route::post('/otp/verify', [OtpController::class, 'verify']);
     Route::post('/checkout', [CheckoutController::class, 'process']);
@@ -38,6 +40,11 @@ Route::prefix('v1')->group(function () {
             // Gatekeeper
             Route::post('/scanner/scan', [ScannerController::class, 'scan']);
             Route::post('/scanner/checkout', [ScannerController::class, 'checkout']);
+
+            // Klasemen & Bagan
+            Route::get('/standings', [StandingController::class, 'index']);
+            Route::put('/standings/{standing}', [StandingController::class, 'updateManual']);
+            Route::post('/standings/sync', [StandingController::class, 'syncExternal']);
         });
     });
 });
