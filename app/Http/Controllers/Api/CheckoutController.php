@@ -81,40 +81,42 @@ class CheckoutController extends Controller
                 return $trx;
             });
 
-            // 3. Tembak Midtrans Core API
-            $paymentParams = [
-                'payment_type' => $validated['payment_type'],
-                'transaction_details' => [
-                    'order_id' => $transaction->id,
-                    'gross_amount' => $transaction->total_amount,
-                ],
-                'customer_details' => [
-                    'first_name' => $transaction->buyer_name,
-                    'email' => $transaction->buyer_email,
-                    'phone' => $transaction->buyer_whatsapp,
-                ],
-            ];
-
-            // Tambahkan param spesifik bank transfer jika dipilih
-            if ($validated['payment_type'] == 'bank_transfer') {
-                $paymentParams['bank_transfer'] = [
-                    'bank' => $validated['bank']
-                ];
-            }
-
-            $midtransResponse = CoreApi::charge($paymentParams);
-
-            // 4. Update instruksi pembayaran ke database
+            // 3 & 4. Tembak Midtrans Core API (Dengan Bypass Lokal)
             $paymentUrlOrVa = null;
-            if ($validated['payment_type'] == 'bank_transfer' && isset($midtransResponse->va_numbers[0])) {
-                $paymentUrlOrVa = $midtransResponse->va_numbers[0]->va_number;
-            } elseif ($validated['payment_type'] == 'qris' && isset($midtransResponse->actions[0])) {
-                $paymentUrlOrVa = $midtransResponse->actions[0]->url; // URL image QR
-            }
 
-            $transaction->update([
-                'payment_url_or_va' => $paymentUrlOrVa
-            ]);
+            if (app()->environment('local') && empty(env('MIDTRANS_SERVER_KEY'))) {
+                // BYPASS LOKAL: Generate dummy instruksi jika belum ada Server Key
+                if ($validated['payment_type'] == 'bank_transfer') {
+                    $paymentUrlOrVa = '88000' . random_int(100000, 999999); // Dummy VA
+                } else {
+                    $paymentUrlOrVa = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=DUMMY_QRIS_' . $transaction->id; // Dummy QR
+                }
+            } else {
+                $paymentParams = [
+                    'payment_type' => $validated['payment_type'],
+                    'transaction_details' => [
+                        'order_id' => $transaction->id,
+                        'gross_amount' => $transaction->total_amount,
+                    ],
+                    'customer_details' => [
+                        'first_name' => $transaction->buyer_name,
+                        'email' => $transaction->buyer_email,
+                        'phone' => $transaction->buyer_whatsapp,
+                    ],
+                ];
+
+                if ($validated['payment_type'] == 'bank_transfer') {
+                    $paymentParams['bank_transfer'] = ['bank' => $validated['bank']];
+                }
+
+                $midtransResponse = CoreApi::charge($paymentParams);
+
+                if ($validated['payment_type'] == 'bank_transfer' && isset($midtransResponse->va_numbers[0])) {
+                    $paymentUrlOrVa = $midtransResponse->va_numbers[0]->va_number;
+                } elseif (in_array($validated['payment_type'], ['qris', 'gopay']) && isset($midtransResponse->actions[0])) {
+                    $paymentUrlOrVa = $midtransResponse->actions[0]->url;
+                }
+            }
 
             // Pemicu Worker: Batalkan transaksi otomatis 15 menit dari sekarang jika PENDING
             ReleaseExpiredTicket::dispatch($transaction->id)->delay(now()->addMinutes(15));
