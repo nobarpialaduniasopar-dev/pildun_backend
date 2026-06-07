@@ -14,8 +14,14 @@
 * **Anti N+1:** Wajib Eager Loading (`with()`) dan aktifkan `Model::preventLazyLoading()`.
 
 ## 3. UI/UX & Keamanan
-* **Tema:** Sporty, bebas *AI slop*. Aset resmi Piala Dunia.
+* **Tema:** Brutalist/Sporty, bebas *AI slop*. Aset resmi Piala Dunia.
 * **Warna:** Average Green (#3CAC3B), Torch Red (#E61D25), Hermes (#2A398D), Light Gray (#D1D4D1), Dark Heather Grey (#474A4A).
+* **Fitur Homepage Ekstra:**
+  * **Sponsor Tiering:** Placeholder iklan untuk Platinum (Besar), Gold (Menengah), dan Silver (Kecil).
+  * **Countdown Timer:** Hitung mundur spesifik ke *Kick-Off* perdana (12 Juni 2026, 02:00 WIB).
+  * **Ongoing Match Carousel:** Deteksi dinamis; jika ada match *hari ini*, akan muncul *floating carousel card*.
+  * **Hot Match Section:** Card pertandingan khusus dengan efek *glow* (Torch Red) yang dipisah dari *grid* jadwal reguler.
+  * **World Bracket & Standings:** Bagan fase gugur (32 tim split) dengan kalkulasi skala dinamis (*Container Query*) dan tabel klasemen grup.
 * **Keamanan:** FormRequest strict validation, Rate Limiting ketat (API, OTP, Checkout), CORS strict ke domain vercel.
 
 ## 4. Flow Integrasi
@@ -25,7 +31,8 @@
 
 ## 5. Dashboard Admin & Gate Management
 * **Akses:** Single Admin (`admin@nobar.com`). Setup via Tinker, tanpa fitur register.
-* **Fitur:** CRUD Match (API Bendera, Hot Match flag), Data Transaksi, Export Excel.
+* **Fitur Utama:** CRUD Match (API Bendera, Hot Match flag), Data Transaksi, Export Excel.
+* **Fitur Klasemen (Standings):** Admin dapat melakukan *Sync API Eksternal* (football-data.org/Seeder) dan memanipulasi poin grup secara manual (*brutalist quick edit*).
 * **Scanner:** Generate Unique Scanner Link untuk gatekeeper (bisa di-revoke).
 * **Pass-Out System:** Scan valid (CHECKED_IN). Jika double scan, ada opsi "OK (Checkout)" agar bisa masuk kembali.
 
@@ -36,7 +43,7 @@
 ### `users` (Super Admin)
 * id (bigint, PK), name, email (UNIQUE), password, remember_token, timestamps.
 
-### `matches` (Target Lock - Race Condition)
+### `match_schedules` (Target Lock - Race Condition)
 * id (bigint, PK)
 * team_a, team_b, flag_a_url, flag_b_url
 * match_date (timestamp) -> *Indexed*
@@ -67,6 +74,19 @@
 * status (enum: RESERVED, VALID, CHECKED_IN, CANCELED) -> *Indexed*
 * scanned_at (timestamp), timestamps
 
+### `standings` (Data Klasemen Grup)
+* id (bigint, PK)
+* group_name (varchar), team_name (varchar), flag_url (varchar)
+* played, won, drawn, lost, points, goals_for, goals_against (integer)
+* timestamps
+
+### `brackets` (Struktur Fase Gugur)
+* id (bigint, PK)
+* round (varchar)
+* match_id (bigint, FK) -> Nullable
+* next_match_id (bigint, FK) -> Nullable
+* timestamps
+
 ### `app_settings`
-* key (varchar, PK) -> *Contoh: 'scanner_auth_token'*
+* key (varchar, PK) -> *Contoh: 'scanner_auth_token', 'last_standings_update'*
 * value (text), timestamps

@@ -45,6 +45,10 @@ Route::prefix('v1')->group(function () {
             Route::get('/standings', [StandingController::class, 'index']);
             Route::put('/standings/{standing}', [StandingController::class, 'updateManual']);
             Route::post('/standings/sync', [StandingController::class, 'syncExternal']);
+
+            // GATEKEEPER PUBLIC ROUTES (Secured by Token)
+            Route::post('/gatekeeper/scan', [\App\Http\Controllers\Api\Admin\ScannerController::class, 'scan']);
+            Route::post('/gatekeeper/checkout', [\App\Http\Controllers\Api\Admin\ScannerController::class, 'checkout']);
         });
     });
 });
