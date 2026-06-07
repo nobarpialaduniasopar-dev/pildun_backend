@@ -21,6 +21,8 @@ Route::prefix('v1')->group(function () {
     Route::post('/checkout', [CheckoutController::class, 'process']);
     Route::get('/checkout/detail/{order_id}', [CheckoutController::class, 'show']);
     Route::post('/webhook/midtrans', [WebhookController::class, 'handle']);
+    // GATEKEEPER PUBLIC ROUTE (Dilindungi oleh Token URL, bukan Sanctum)
+    Route::post('/gatekeeper/scan', [\App\Http\Controllers\Api\Admin\ScannerController::class, 'scanGatekeeper']);
 
     // Flow Admin
     Route::prefix('admin')->group(function () {
@@ -37,18 +39,14 @@ Route::prefix('v1')->group(function () {
             Route::get('/transactions', [TransactionController::class, 'index']);
             Route::get('/transactions/export', [TransactionController::class, 'exportCsv']);
             
-            // Gatekeeper
-            Route::post('/scanner/scan', [ScannerController::class, 'scan']);
-            Route::post('/scanner/checkout', [ScannerController::class, 'checkout']);
-
             // Klasemen & Bagan
             Route::get('/standings', [StandingController::class, 'index']);
             Route::put('/standings/{standing}', [StandingController::class, 'updateManual']);
             Route::post('/standings/sync', [StandingController::class, 'syncExternal']);
 
-            // GATEKEEPER PUBLIC ROUTES (Secured by Token)
-            Route::post('/gatekeeper/scan', [\App\Http\Controllers\Api\Admin\ScannerController::class, 'scan']);
-            Route::post('/gatekeeper/checkout', [\App\Http\Controllers\Api\Admin\ScannerController::class, 'checkout']);
+            // Gatekeeper Link Management
+            Route::get('/scanner/token', [\App\Http\Controllers\Api\Admin\ScannerController::class, 'getToken']);
+            Route::post('/scanner/token', [\App\Http\Controllers\Api\Admin\ScannerController::class, 'generateToken']);
         });
     });
 });
