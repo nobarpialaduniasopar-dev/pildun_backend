@@ -6,13 +6,12 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Ticket;
 use App\Models\AppSetting;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class ScannerController extends Controller
 {
-    // ================= 1. ADMIN: MANAJEMEN LINK =================
+    // ================= ADMIN: MANAJEMEN LINK =================
     public function getToken()
     {
         $setting = AppSetting::firstOrCreate(
@@ -26,58 +25,84 @@ class ScannerController extends Controller
     {
         $token = Str::uuid()->toString();
         AppSetting::updateOrCreate(['key' => 'scanner_auth_token'], ['value' => $token]);
-        return response()->json(['token' => $token, 'message' => 'Link scanner baru berhasil dibuat. Link lama otomatis hangus!']);
+        return response()->json(['token' => $token, 'message' => 'Link scanner baru berhasil di-generate. Link lama hangus.']);
     }
 
-    // ================= 2. GATEKEEPER: SCAN (PUBLIC + TOKEN) =================
-    public function scanGatekeeper(Request $request)
+    // ================= GATEKEEPER: SCAN & PASS-OUT =================
+    private function validateGatekeeperToken($token)
     {
-        // 1. Validasi Magic Link Token
         $validToken = AppSetting::where('key', 'scanner_auth_token')->value('value');
-        if (!$request->gatekeeper_token || $request->gatekeeper_token !== $validToken) {
-            return response()->json(['message' => 'UNAUTHORIZED: Link Scanner tidak valid atau sudah ditarik oleh Admin!', 'status' => 'error'], 401);
+        return $token && $token === $validToken;
+    }
+
+    public function scan(Request $request)
+    {
+        if (!$this->validateGatekeeperToken($request->gatekeeper_token)) {
+            return response()->json(['message' => 'UNAUTHORIZED: Link Scanner tidak valid atau sudah hangus!', 'status' => 'error'], 401);
         }
 
-        // 2. Validasi Format QR
-        $validator = Validator::make($request->all(), [
-            'ticket_code' => 'required|uuid'
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['message' => 'Format QR Tidak Dikenal!', 'status' => 'error'], 400);
-        }
+        $request->validate(['ticket_id' => 'required|uuid']);
 
         try {
             return DB::transaction(function () use ($request) {
-                // 3. PESSIMISTIC LOCKING: Kunci data saat dibaca
-                $ticket = Ticket::with(['transaction'])->where('id', $request->ticket_code)->lockForUpdate()->first();
+                // PESSIMISTIC LOCKING DITERAPKAN
+                $ticket = Ticket::with(['transaction', 'match'])
+                    ->where('id', $request->ticket_id)
+                    ->lockForUpdate()
+                    ->first();
 
-                if (!$ticket) return response()->json(['message' => 'INVALID: Tiket tidak ada di database!', 'status' => 'error'], 404);
-                if ($ticket->status === 'CANCELED') return response()->json(['message' => 'REJECTED: Tiket telah dibatalkan.', 'status' => 'error'], 422);
-                if ($ticket->status === 'RESERVED') return response()->json(['message' => 'REJECTED: Belum lunas.', 'status' => 'error'], 422);
+                if (!$ticket) return response()->json(['message' => 'INVALID: Tiket tidak dikenali!', 'status' => 'error'], 404);
+                if ($ticket->status === 'CANCELED') return response()->json(['message' => 'REJECTED: Tiket dibatalkan.', 'status' => 'error', 'ticket' => $ticket], 422);
+                if ($ticket->status === 'RESERVED') return response()->json(['message' => 'REJECTED: Belum Lunas.', 'status' => 'error', 'ticket' => $ticket], 422);
 
                 if ($ticket->status === 'CHECKED_IN') {
+                    // Mengubah ke 422 agar frontend gampang menangkapnya sebagai Error
                     return response()->json([
-                        'message' => 'TIKET SUDAH DIGUNAKAN!',
+                        'message' => 'SUDAH CHECK-IN!',
                         'status' => 'already_in',
-                        'scanned_at' => $ticket->scanned_at
+                        'ticket' => $ticket
                     ], 422);
                 }
 
-                // 4. Buka Pintu
                 $ticket->update(['status' => 'CHECKED_IN', 'scanned_at' => now()]);
 
                 return response()->json([
-                    'message' => 'CHECK-IN BERHASIL!',
+                    'message' => 'AKSES DIBERIKAN',
                     'status' => 'success',
-                    'data' => [
-                        'buyer_name' => $ticket->transaction->buyer_name ?? 'Unknown',
-                        'qty' => 1
-                    ]
+                    'ticket' => $ticket
                 ], 200);
             });
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Kesalahan server internal.'], 500);
+            return response()->json(['message' => 'Terjadi kesalahan sistem internal.'], 500);
+        }
+    }
+
+    public function checkout(Request $request)
+    {
+        if (!$this->validateGatekeeperToken($request->gatekeeper_token)) {
+            return response()->json(['message' => 'UNAUTHORIZED: Link Scanner tidak valid!', 'status' => 'error'], 401);
+        }
+
+        $request->validate(['ticket_id' => 'required|uuid']);
+
+        try {
+            return DB::transaction(function () use ($request) {
+                // PESSIMISTIC LOCKING DITERAPKAN
+                $ticket = Ticket::where('id', $request->ticket_id)->lockForUpdate()->first();
+
+                if (!$ticket || $ticket->status !== 'CHECKED_IN') {
+                    return response()->json(['message' => 'Gagal: Tiket belum di-scan masuk.', 'status' => 'error'], 400);
+                }
+
+                $ticket->update(['status' => 'VALID']);
+
+                return response()->json([
+                    'message' => 'PASS-OUT BERHASIL',
+                    'status' => 'success'
+                ], 200);
+            });
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Terjadi kesalahan sistem internal.'], 500);
         }
     }
 }
